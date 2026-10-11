@@ -17,6 +17,7 @@
 
 # Output files from R CMD check
 /*.Rcheck/
+^cran-comments\.md$
 
 # RStudio files
 .Rproj.user/

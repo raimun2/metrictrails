@@ -1,6 +1,6 @@
 Package: metrictrails
 Title: Processing of GNSS Streams from Sports Watches
-Version: 0.1.0
+Version: 1.0.0
 Authors@R: 
     person(given = "Raimundo",
            family = "Sanchez",

@@ -180,7 +180,12 @@ resample_dem = function(dem, res, method = c("bilinear", "near", "mean", "median
     stop("The DEM must be in a metric CRS; project it first (e.g. terra::project()).", call. = FALSE)
   }
   if (method %in% c("bilinear", "near")) {
-    template = terra::rast(terra::ext(dem), resolution = res, crs = terra::crs(dem))
+    e = terra::ext(dem)
+    nc = ceiling((e$xmax - e$xmin) / res)
+    nr = ceiling((e$ymax - e$ymin) / res)
+    template = terra::rast(xmin = e$xmin, xmax = e$xmin + nc * res,
+                           ymin = e$ymax - nr * res, ymax = e$ymax,
+                           ncols = nc, nrows = nr, crs = terra::crs(dem))
     return(terra::resample(dem, template, method = method))
   }
   fact = round(res / terra::res(dem)[1])
@@ -221,7 +226,7 @@ resample_dem = function(dem, res, method = c("bilinear", "near", "mean", "median
 #' @export
 #'
 #' @examples
-#' f = system.file("extdata", "gpx_activity.gpx", package = "metrictrails")
+#' f = system.file("extdata", "gpx_route.gpx", package = "metrictrails")
 #' dem = system.file("extdata", "test_dem.tif", package = "metrictrails")
 #' stream = ele_correction(read_stream(f), dem = dem, replace = FALSE)
 #' summary(stream$ele - stream$ele_dem)

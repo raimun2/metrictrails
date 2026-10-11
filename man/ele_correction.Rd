@@ -37,7 +37,7 @@ altitude sensor (Sanchez & Villena, 2020). This is the last step of the
 pipeline, after \code{\link[=resample_stream]{resample_stream()}}.
 }
 \examples{
-f = system.file("extdata", "gpx_activity.gpx", package = "metrictrails")
+f = system.file("extdata", "gpx_route.gpx", package = "metrictrails")
 dem = system.file("extdata", "test_dem.tif", package = "metrictrails")
 stream = ele_correction(read_stream(f), dem = dem, replace = FALSE)
 summary(stream$ele - stream$ele_dem)

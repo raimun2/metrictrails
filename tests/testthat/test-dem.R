@@ -20,6 +20,7 @@ test_that("resample_dem refines and aggregates", {
 
 test_that("get_dem downloads terrain tiles", {
   skip_on_cran()
+  skip_if_not_installed("curl")
   skip_if_offline("s3.amazonaws.com")
   dem = get_dem(act[1:50, ], z = 10, buffer = 100)
   expect_s4_class(dem, "SpatRaster")

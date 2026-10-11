@@ -47,5 +47,10 @@ Useful links:
 \author{
 \strong{Maintainer}: Raimundo Sanchez \email{raimundosanchezu@gmail.com} (\href{https://orcid.org/0000-0003-2242-1335}{ORCID})
 
+Authors:
+\itemize{
+  \item Raimundo Sanchez \email{raimundosanchezu@gmail.com} (\href{https://orcid.org/0000-0003-2242-1335}{ORCID})
+}
+
 }
 \keyword{internal}

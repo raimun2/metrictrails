@@ -5,8 +5,7 @@
 
 **metrictrails** is an R package to read, clean and standardise GNSS streams
 recorded by sports watches and similar devices, with a focus on trail and
-mountain running. It is the successor of
-[GPStream](https://github.com/raimun2/GPStream) and implements the methods of
+mountain running. It implements the methods of
 the Metric Trails research papers (see [References](#references)).
 
 A *stream* is any sequence of consecutive readings with `lon` and `lat`, and

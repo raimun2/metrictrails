@@ -41,7 +41,7 @@ Predicate and locator: does a stream follow a route, and where? The stream
 is not transformed (compare with \code{\link[=match_stream]{match_stream()}}, which aligns a stream
 known to follow a route).
 
-The procedure follows the former GPStream \code{match_stream()}, in metres:
+The procedure follows, in metres:
 \enumerate{
 \item the stream must come within \code{tolerance} of the route;
 \item at least \code{min_completion} of the route readings must lie within

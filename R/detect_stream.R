@@ -5,7 +5,7 @@
 #' is not transformed (compare with [match_stream()], which aligns a stream
 #' known to follow a route).
 #'
-#' The procedure follows the former GPStream `match_stream()`, in metres:
+#' The procedure follows, in metres:
 #'
 #' 1. the stream must come within `tolerance` of the route;
 #' 2. at least `min_completion` of the route readings must lie within

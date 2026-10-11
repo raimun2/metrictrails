@@ -123,8 +123,7 @@ every method except \code{"gaussian"} runs along the cumulative 2D distance
 instead of time (arc-length parametrisation; \code{sigma_acc} then bounds the
 curvature, in 1/m).
 \item \code{"loess"}: local polynomial regression of each coordinate against time (or
-cumulative distance when there is no time), with span \code{alpha}. This is the
-method of the former GPStream \code{smooth_stream()}.
+cumulative distance when there is no time), with span \code{alpha}.
 \item \code{"gaussian"}: Gaussian kernel regression against time with standard
 deviation \code{bandwidth} seconds (Sanchez & Villena, 2020).
 \item \code{"savgol"}: Savitzky-Golay filter with window \code{sg_window} and polynomial

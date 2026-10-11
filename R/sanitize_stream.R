@@ -46,8 +46,7 @@
 #'   instead of time (arc-length parametrisation; `sigma_acc` then bounds the
 #'   curvature, in 1/m).
 #' * `"loess"`: local polynomial regression of each coordinate against time (or
-#'   cumulative distance when there is no time), with span `alpha`. This is the
-#'   method of the former GPStream `smooth_stream()`.
+#'   cumulative distance when there is no time), with span `alpha`.
 #' * `"gaussian"`: Gaussian kernel regression against time with standard
 #'   deviation `bandwidth` seconds (Sanchez & Villena, 2020).
 #' * `"savgol"`: Savitzky-Golay filter with window `sg_window` and polynomial

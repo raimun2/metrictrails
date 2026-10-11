@@ -1,4 +1,4 @@
-# metrictrails
+# Metric Trails
 
 <!-- badges: start -->
 <!-- badges: end -->

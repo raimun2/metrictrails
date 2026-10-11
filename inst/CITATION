@@ -1,0 +1,19 @@
+bibentry(
+  bibtype = "Manual",
+  title = "metrictrails: Processing of GNSS Streams from Sports Watches",
+  author = person("Raimundo", "Sanchez"),
+  year = "2026",
+  note = "R package version 0.1.0",
+  url = "https://github.com/raimun2/metrictrails"
+)
+
+bibentry(
+  bibtype = "Article",
+  title = "How fractal complexity distorts distance and elevation gain in trail and mountain running: The case for course measurement standardization",
+  author = c(person("Raimundo", "Sanchez"), person(c("Pascal", "E."), "Egli"),
+             person("Kilian", "Jornet"), person("Michael", "Duggan"),
+             person("Manuela", "Besomi")),
+  journal = "Proceedings of the Institution of Mechanical Engineers, Part P: Journal of Sports Engineering and Technology",
+  year = "2025",
+  doi = "10.1177/17543371251341660"
+)

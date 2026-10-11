@@ -1,0 +1,264 @@
+---
+title: "From a GPX file to research-grade trail measures"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{From a GPX file to research-grade trail measures}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 4)
+```
+
+This vignette walks through the metrictrails pipeline with the files shipped
+in the package: a trail run on Manquehue hill (Santiago, Chile) recorded by a
+GNSS watch, the same loop drawn as a route, and a small Digital Elevation
+Model (DEM) of the area.
+
+```{r setup}
+library(metrictrails)
+
+activity_file = system.file("extdata", "gpx_activity.gpx", package = "metrictrails")
+route_file = system.file("extdata", "gpx_route.gpx", package = "metrictrails")
+dem_file = system.file("extdata", "test_dem.tif", package = "metrictrails")
+```
+
+The pipeline has five steps:
+
+1. **ingest** a GPX file, `read_stream()`;
+2. apply the **naming convention**, `uniform_stream()`;
+3. **sanitize** the coordinates, `sanitize_stream()`;
+4. **resample** to a uniform spatial resolution, `resample_stream()`;
+5. replace the **elevation** with values from a DEM, `ele_correction()`.
+
+## 1. Ingest
+
+`read_stream()` reads the track points of a GPX file with sf. Every track
+segment becomes a value of `segment`, and Garmin point extensions (heart rate,
+cadence, temperature) become numeric columns.
+
+```{r}
+raw = read_stream(activity_file)
+raw
+```
+
+## 2. Naming convention
+
+`uniform_stream()` renames the columns to `lon`, `lat`, `ele`, `timestamp` and
+`time` (seconds since the start). It also works on data frames from other
+sources, such as the Strava API streams in `strava_streams`.
+
+```{r}
+raw = uniform_stream(raw)
+names(raw)
+head(uniform_stream(strava_streams), 3)
+```
+
+## 3. Sanitize
+
+`sanitize_stream()` first flags readings that are physically implausible:
+speed, acceleration, jumps at the edges, slope, vertical speed, and elevation
+changes while the athlete stands still. Then it smooths `lon` and `lat`. The
+default method is a constant-velocity Kalman filter with a
+Rauch-Tung-Striebel smoother; LOESS, a Gaussian kernel, Savitzky-Golay and the
+full post-processing pipeline of Martinez, Sanchez & Diaz (2026) are also
+available.
+
+```{r}
+clean = sanitize_stream(raw)
+attr(clean, "sanitize_report")$counts
+```
+
+The flags are computed on the raw readings, before smoothing. In this
+activity the positions raise no flags. The flags concern the raw elevation:
+slopes above 50 degrees between close readings, implausible vertical speeds,
+and elevation changes while standing still. Flagged readings can be kept
+(`action = "flag"`, the default), dropped or interpolated.
+
+```{r}
+methods = c("kalman", "loess", "gaussian", "savgol", "pipeline")
+lengths = sapply(methods, function(m) {
+  summarise_stream(sanitize_stream(raw, method = m))$distance_2d
+})
+round(c(raw = summarise_stream(raw)$distance_2d, lengths))
+```
+
+Every method removes part of the positional noise, which shortens the path.
+LOESS with its default span smooths the most.
+
+## 4. Resample: the Nyquist resolution
+
+A watch that records every second produces a spatial resolution that is a
+random variable: the distance between readings is the speed times the
+sampling interval. Because trails are fractal, distance and elevation gain
+depend on that resolution (Sanchez et al., 2025), so two recordings of the
+same trail are not directly comparable.
+
+`resolution_stream()` describes the distribution of the horizontal distance
+between moving readings:
+
+```{r}
+resolution_stream(clean)
+```
+
+Its 0.9 quantile, `res`, is the finest uniform spacing that represents the
+path without inventing readings between sparse fixes. `resample_stream()`
+uses it by default:
+
+```{r}
+resampled = resample_stream(clean)
+attr(resampled, "res")
+nrow(resampled)
+```
+
+The fractal effect is easy to see by resampling the same stream at increasing
+resolutions:
+
+```{r fractal}
+res = c(1, 2, 3, 5, 8, 13, 20, 30, 50, 80)
+distance = sapply(res, function(r) summarise_stream(resample_stream(clean, res = r))$distance_2d)
+plot(res, distance / 1000, log = "x", type = "b", pch = 19,
+     xlab = "Resolution (m, log scale)", ylab = "Distance (km)")
+abline(v = attr(resampled, "res"), lty = 2)
+```
+
+To compare several streams, resample all of them with one common resolution,
+at least the largest of their Nyquist resolutions:
+
+```{r}
+streams = list(activity = clean, route = read_stream(route_file))
+resolution_stream(streams)[, c("stream", "q50", "res")]
+common = max(resolution_stream(streams)$res)
+```
+
+The route was drawn with sparse vertices, so it sets the common resolution.
+
+`fractal_stream()` summarises the same behaviour as a fractal dimension
+(divider method):
+
+```{r}
+fd = fractal_stream(clean)
+fd$dimension
+```
+
+## 5. Elevation from a DEM
+
+Raw elevation comes from a barometer or from GNSS, and it is noisy and often
+rounded to the metre. `ele_correction()` replaces it with values from a DEM.
+Without a `dem` argument, `get_dem()` downloads AWS Terrain Tiles at zoom 14
+along a corridor around the stream. Here we use the DEM shipped with the
+package:
+
+```{r}
+final = ele_correction(resampled, dem = dem_file)
+```
+
+```{r, eval = FALSE}
+# same result with a downloaded DEM, refined to 1 m by bilinear interpolation
+dem = get_dem(resampled, res = 1)
+final = ele_correction(resampled, dem = dem)
+```
+
+```{r elevation}
+d_raw = differential_stream(raw)
+d_final = differential_stream(final)
+plot(d_raw$distance / 1000, raw$ele, type = "l", col = "grey60",
+     xlab = "Distance (km)", ylab = "Elevation (m)")
+lines(d_final$distance / 1000, final$ele, lwd = 1.5)
+legend("topright", c("device", "pipeline + DEM"), col = c("grey60", "black"), lwd = c(1, 1.5), bty = "n")
+```
+
+## Measures
+
+`differential_stream()` adds per-reading differences and rates, and
+`summarise_stream()` the course-level measures, here before and after the
+pipeline:
+
+```{r}
+cols = c("distance_2d", "elevation_gain", "elevation_loss", "km_effort", "resolution")
+cbind(stream = c("raw", "pipeline"),
+      rbind(summarise_stream(raw)[, cols], summarise_stream(final)[, cols]))
+```
+
+### Tobler parameters
+
+`tobler_stream()` fits an asymmetric Tobler hiking function to the
+speed-slope relation. It models the frontier of performance (by default the
+0.9 quantile of speed), not the mean, by minimising the quantile loss.
+
+```{r tobler}
+params = tobler_stream(final)
+params
+
+d = differential_stream(final)
+keep = is.finite(d$speed) & is.finite(d$slope) & abs(d$slope) <= 0.6
+plot(d$slope[keep], d$speed[keep], pch = 16, cex = 0.4, col = "grey60",
+     xlab = "Slope (rise over run)", ylab = "Horizontal speed (m/s)")
+slope = seq(-0.6, 0.6, by = 0.01)
+lines(slope, tobler_speed(slope, params), lwd = 2)
+```
+
+In this single activity the frontier is flat downhill (`c_minus` close to 0)
+and the speed only drops on steep climbs. Many activities, or a population
+of athletes, give a better-defined frontier.
+
+## Two streams
+
+`detect_stream()` is a predicate: does the activity follow the route, in
+which direction, and between which readings?
+
+```{r}
+route = read_stream(route_file)
+detect_stream(raw, route)
+```
+
+`locate_stream()` projects every reading on the route (linear referencing),
+and `compare_stream()` measures the spatial agreement of two streams
+resampled at the same resolution:
+
+```{r}
+located = locate_stream(clean, route)
+summary(abs(located$offset_cross))
+
+compare_stream(resample_stream(clean, res = 2), resample_stream(route, res = 2))
+```
+
+### Matching to a known reference
+
+When the athlete is known to have followed a reference trail, for example
+rounds on a trail measured with a high-precision protocol, `match_stream()`
+estimates where the athlete was along the reference at every timestamp. The
+match never moves backwards and never exceeds the Tobler ceiling, and the
+global optimum is found by dynamic programming. The result keeps the time and
+the other variables of the stream, takes the coordinates and elevation of the
+reference, and reports the offset of every reading along and across the
+trail.
+
+```{r}
+reference = route %>% resample_stream(res = 2) %>% ele_correction(dem = dem_file)
+matched = match_stream(clean[1:800, ], reference, params = params)
+attr(matched, "match_report")
+summary(matched[, c("offset_d", "offset_along", "offset_cross")])
+```
+
+```{r matched}
+plot(matched$time / 60, matched$s_ref / 1000, type = "l",
+     xlab = "Time (min)", ylab = "Position along the reference (km)")
+```
+
+## Writing the result
+
+```{r}
+out = tempfile(fileext = ".gpx")
+write_stream(final, out, name = "Manquehue loop")
+nrow(read_stream(out))
+```
+
+## References
+
+* Sanchez, R., & Villena, M. (2020). Comparative evaluation of wearable devices for measuring elevation gain in mountain physical activities. *Proc IMechE Part P*, 234(4), 312-319. <https://doi.org/10.1177/1754337120918975>
+* Sanchez, R., Egli, P., Besomi, M., & Truffello, R. (2024). Assessing the impact of Digital Elevation Model resolution on elevation gain estimations in trail running. *ICECET 2024*. <https://doi.org/10.1109/ICECET61485.2024.10698606>
+* Sanchez, R., Egli, P. E., Jornet, K., Duggan, M., & Besomi, M. (2025). How fractal complexity distorts distance and elevation gain in trail and mountain running. *Proc IMechE Part P*. <https://doi.org/10.1177/17543371251341660>
+* Sanchez, R., Nieto-Jimenez, C., & Riveros-Matthey, C. (2025). High-precision mapping of mountain terrain for human locomotion research. *ICPRS 2025*. <https://doi.org/10.1109/ICPRS66293.2025.11302827>
+* Martinez, C., Sanchez, R., & Diaz, C. (2026). A post-processing methodology for improving kinematic consistency in GNSS-based running trajectories. *ICECET 2026*. <https://doi.org/10.1109/ICECET65726.2026.11632531>

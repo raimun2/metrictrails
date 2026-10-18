@@ -4,7 +4,14 @@
 \alias{summarise_stream}
 \title{Summary measures of a stream}
 \usage{
-summarise_stream(data, by = NULL, idle = 0.1, fractal = FALSE)
+summarise_stream(
+  data,
+  by = NULL,
+  idle = 0.1,
+  fractal = FALSE,
+  window = 100,
+  closed_tol = 50
+)
 }
 \arguments{
 \item{data}{A stream with \code{lon} and \code{lat} (and optionally \code{ele}, \code{time}).}
@@ -15,6 +22,12 @@ summarise_stream(data, by = NULL, idle = 0.1, fractal = FALSE)
 
 \item{fractal}{If \code{TRUE}, adds the fractal dimension (\code{NA} when the path is
 too short for its resolution).}
+
+\item{window}{Length (m) of the windows of \code{sinuosity_local}. It should be
+several times the resolution of the stream.}
+
+\item{closed_tol}{Distance (m) between the first and last readings below
+which the path is closed and \code{sinuosity} is \code{NA}.}
 }
 \value{
 A tibble with one row per group.
@@ -29,7 +42,16 @@ elevation change (m, both positive).
 \item \code{mean_slope}, \code{iqr_slope}: mean and inter-quartile range of the slope of
 moving readings (\%).
 \item \code{sinuosity}: path length over straight-line distance between the first
-and last readings (\code{Inf} for closed loops).
+and last readings. \code{NA} for closed paths (first and last readings closer
+than \code{closed_tol}), where the ratio is not defined.
+\item \code{sinuosity_local}: mean ratio between the path length of a window of
+\code{window} metres and the straight-line distance (chord) between its ends.
+Windows start every \code{window / 10} metres along the path and both ends are
+interpolated, so the measure does not depend on the sampling rate of the
+device. It is defined for open and closed paths alike, equals 1 for a
+straight line and grows with the curvature at the scale of \code{window}.
+Windows do not cross segments; \code{NA} when no segment is longer than
+\code{window}.
 \item \code{mean_turn}: mean heading change (degrees).
 \item \code{resolution}: mean horizontal distance between consecutive readings (m).
 \item \code{km_effort}: kilometre-effort, horizontal km plus elevation gain / 100.

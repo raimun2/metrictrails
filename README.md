@@ -14,8 +14,7 @@ optionally `ele`, `timestamp`, `time`, heart rate, cadence and other variables.
 ## Installation
 
 ```r
-# install.packages("remotes")
-remotes::install_github("raimun2/metrictrails")
+install.packages("metrictrails")
 ```
 
 ## The pipeline
